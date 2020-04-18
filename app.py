@@ -16,7 +16,7 @@ recipe_input = dcc.Input(
     placeholder="Enter Recipe URL"
 )
 
-recipe_output = html.Div(id="recipe_ouput")
+recipe_output = html.Div(id="recipe_output")
 
 ########### Initiate the app
 
