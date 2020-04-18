@@ -32,9 +32,9 @@ app.layout = html.Div(
 
 @app.callback(
     Output("recipe_output", "children"),
-    Input("recipe_input", "value"),
+    [Input("recipe_input", "value")],
 )
-def cb_render(val):
+def cb_render(*val):
     return val
 
 if __name__ == '__main__':
