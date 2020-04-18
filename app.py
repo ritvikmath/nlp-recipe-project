@@ -84,7 +84,7 @@ app.layout = html.Div([
 def update_recipe_result(n_clicks, value):
     
     try:
-        result = requests.get(value).text
+        result = requests.get(value.strip()).text
         ingredients = re.findall(r'itemprop="recipeIngredient">(.*)<', result)
         parsed_ingredients = [get_amount_measurement_ingredient(s) for s in ingredients]
         table_data = [{'amount':p[0], 'measurement':p[1], 'ingredient':p[2]} for p in parsed_ingredients]
