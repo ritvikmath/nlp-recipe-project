@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 
 
 #create dataframe
-with open('../data/recipe1M_layers.tar/recipe1M_layers/layer1.json') as f:
+with open("../layer1.json") as f:
   data = json.load(f)
 
 #create ingredient, instruction, and recipie dataframes
@@ -57,6 +57,11 @@ plt.xlabel("Length of Ingredients")
 plt.ylabel("Number of Recipes")
 plt.show()
 
+plt.hist(recipes['Len_Ingredients'] / recipes['N_Ingredients'], bins=40)
+plt.title("Histogram of Average Ingredient Length")
+plt.xlabel("Ingredient Length per Ingredient")
+plt.ylabel("Number of Recipes")
+plt.show()
 
 #distribution of number of instructions
 plt.hist(recipes['N_Instructions'], bins=40)
@@ -68,5 +73,11 @@ plt.show()
 plt.hist(recipes['Len_Instructions'], bins=40)
 plt.title("Histogram of Length of Instructions")
 plt.xlabel("Length of Instructions")
+plt.ylabel("Number of Recipes")
+plt.show()
+
+plt.hist(recipes['Len_Instructions'] / recipes['N_Instructions'], bins=40)
+plt.title("Histogram of Average Instruction Length")
+plt.xlabel("Instruction Length per Instruction")
 plt.ylabel("Number of Recipes")
 plt.show()
