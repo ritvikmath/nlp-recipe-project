@@ -10,6 +10,38 @@ from tensorflow.python.keras.preprocessing.text import Tokenizer
 import pandas as pd
 
 import pickle
+import requests
+
+## functions for reading from google drive
+
+def download_file_from_google_drive(id, destination):
+    URL = "https://docs.google.com/uc?export=download"
+
+    session = requests.Session()
+
+    response = session.get(URL, params = { 'id' : id }, stream = True)
+    token = get_confirm_token(response)
+
+    if token:
+        params = { 'id' : id, 'confirm' : token }
+        response = session.get(URL, params = params, stream = True)
+
+    save_response_content(response, destination)    
+
+def get_confirm_token(response):
+    for key, value in response.cookies.items():
+        if key.startswith('download_warning'):
+            return value
+
+    return None
+
+def save_response_content(response, destination):
+    CHUNK_SIZE = 32768
+
+    with open(destination, "wb") as f:
+        for chunk in response.iter_content(CHUNK_SIZE):
+            if chunk: # filter out keep-alive new chunks
+                f.write(chunk)
 
 # define variables
 tabtitle='NLP Recipe Project'
@@ -19,12 +51,19 @@ default_ingredient = '2 tbsp butter'
 
 # read model files
 
+model_file_id = '1GYEo-uEX_ENGEFjbO-Y5OUGUuc6FNw5o'
+download_file_from_google_drive(model_file_id, 'ingredients_model.h5')
 model = load_model('ingredients_model.h5')
+
+y_dict_file_id = '1uGioVKbxdDvRYSxprsip7sVs1pDuK93m'
+download_file_from_google_drive(y_dict_file_id, 'y_dict.p')
 y_dict = pickle.load(open("y_dict.p","rb"))
+
+tokenizer_file_id = '1Onacem0OmGsVuWl-qecxrpoK0DrWHf7Z'
+download_file_from_google_drive(tokenizer_file_id, 'tokenizer_obj.p')
 tokenizer_obj = pickle.load(open("tokenizer_obj.p","rb"))
 
-max_length = 54 #this has been hard coded, likely it shouldnt be
-
+max_length = 54 #this has been hard coded, likely it shouldn't be
 
 # define app components
 
