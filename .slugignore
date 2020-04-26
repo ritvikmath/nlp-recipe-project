@@ -1,5 +1,3 @@
 *.ipynb
 read_data.py
 README.md
-*.p
-*.h5
