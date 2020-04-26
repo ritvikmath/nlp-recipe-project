@@ -2,98 +2,86 @@ import dash
 import dash_core_components as dcc
 import dash_html_components as html
 from dash.dependencies import Input, Output
-import requests
-import dash_table
-import re
 
-########### Define your variables
+from tensorflow.keras.models import load_model
+from tensorflow.python.keras.preprocessing.sequence import pad_sequences
+from tensorflow.python.keras.preprocessing.text import Tokenizer
+
+import pandas as pd
+
+import pickle
+
+# define variables
 tabtitle='NLP Recipe Project'
-myheading='Enter a Recipe URL'
-recipe_link = 'https://www.allrecipes.com/recipe/20144/banana-banana-bread/'
+myheading='Enter an Ingredient String'
+default_ingredient = '2 tbsp butter'
 
-common_measurements = ['cup', 'tablespoon', 'teaspoon']
 
-def get_amount_measurement_ingredient(s):
-    #get amount
-    amount = re.findall(r'^(\d+(?:(?: \d+)*\/\d+)?)', s)
-    amount = amount[0] if len(amount) > 0 else ''
-    
-    #get measurement
-    measurement = ''
-    for c in common_measurements:
-        matches = re.findall(c + 's?', s)
-        if len(matches) > 0:
-            measurement += matches[0]
-    
-    #get the ingredient
-    ingredient = s.replace(amount, '').replace(measurement, '').strip()
-    
-    return amount, measurement, ingredient
+# read model files
 
-########### App components
+model = load_model('ingredients_model.h5')
+y_dict = pickle.load(open("y_dict.p","rb"))
+tokenizer_obj = pickle.load(open("tokenizer_obj.p","rb"))
 
-recipe_input = dcc.Input(
-    id="recipe_input",
+max_length = 54 #this has been hard coded, likely it shouldnt be
+
+
+# define app components
+
+ingredient_input = dcc.Input(
+    id="ingredient_input",
     type="text",
-    placeholder="Enter Recipe URL", 
+    placeholder="Enter Ingredient String", 
     style={'textAlign': 'center', 'width': '50%'},
-    value=recipe_link
+    value=default_ingredient
 )
 
-submit_button = html.Button('Submit', id='submit_url', n_clicks=0)
+submit_button = html.Button('Submit', id='submit_ingredient_string', n_clicks=0)
 
-recipe_output = dash_table.DataTable(
-        id='recipe_output',
-        columns=[{"name": "Amount", "id": 'amount'}, {"name": "Measurement", "id": 'measurement'}, {"name": "Ingredient", "id": 'ingredient'}],
-        style_cell_conditional=[
-        {'if': {'column_id': 'amount'},
-         'textAlign': 'left'},
-        {'if': {'column_id': 'measurement'},
-         'textAlign': 'left'},
-        {'if': {'column_id': 'ingredient'},
-         'textAlign': 'left'},
-    ]
-    )
+ingredient_output = html.Label(id='ingredient_output', children='butter', style={'fontSize': '24px'})
 
-########### Initiate the app
+# initiate app
 
 external_stylesheets = ['https://codepen.io/chriddyp/pen/bWLwgP.css']
 app = dash.Dash(__name__, external_stylesheets=external_stylesheets)
 server = app.server
 app.title=tabtitle
 
-########### Set up the layout
+# set layout
 app.layout = html.Div([
         html.Div([
              html.H1(myheading),
-             recipe_input
+             ingredient_input
              ], style={'padding':15}),
          html.Div([
              submit_button
              ]),
          html.Div([
-             recipe_output
+             html.Label("Predicted Ingredient:", style={'fontSize': '20px'}),
+             ingredient_output
              ], style={'padding':15, 'width': '70%', 'margin-left': 'auto', 'margin-right': 'auto'})
     ], style={'textAlign': 'center'}
 )
 
 @app.callback(
-    dash.dependencies.Output('recipe_output', 'data'),
-    [dash.dependencies.Input('submit_url', 'n_clicks')],
-    [dash.dependencies.State('recipe_input', 'value')])
-def update_recipe_result(n_clicks, value):
+    dash.dependencies.Output('ingredient_output', 'children'),
+    [dash.dependencies.Input('submit_ingredient_string', 'n_clicks')],
+    [dash.dependencies.State('ingredient_input', 'value')])
+def update_predicted_ingredient(n_clicks, value):
     
     try:
-        result = requests.get(value.strip()).text
-        ingredients = re.findall(r'itemprop="recipeIngredient">(.*)<', result)
-        parsed_ingredients = [get_amount_measurement_ingredient(s) for s in ingredients]
-        table_data = [{'amount':p[0], 'measurement':p[1], 'ingredient':p[2]} for p in parsed_ingredients]
+        test_sample = [value]
+        test_sample_pad = pad_sequences(tokenizer_obj.texts_to_sequences(test_sample),maxlen=max_length,padding='post')
+        test_sample_predict = model.predict(x=test_sample_pad)
+        
+        max_index = [list(p).index(max(p)) for p in test_sample_predict]
+        predictions = y_dict[y_dict.index.isin(max_index)]["value"].reset_index()
+        pred = pd.DataFrame({'text':list(test_sample),'predicted_id':max_index}).merge(predictions, left_on='predicted_id', right_on='index').value.iloc[0]
+        
+        return pred
+        
     except:
-        return []
-    
-    return table_data
-
-    
+        return None
 
 if __name__ == '__main__':
     app.run_server()
