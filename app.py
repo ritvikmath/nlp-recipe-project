@@ -89,6 +89,7 @@ current_liked_recipe_ids = []
 #this global keeps track of all the info regarding each card
 current_input_state = {bid: {'id':'', 'title':'', 'url':'', 'style': base_style, 'button_style': button_input_style, 'picked':False} for bid in available_button_ids}
 
+print('reading files')
 
 #read data file
 try:
