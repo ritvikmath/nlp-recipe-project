@@ -61,9 +61,9 @@ current_input_state = {bid: {'id':'', 'title':'', 'url':'', 'style': base_style,
 
 #read data file
 try:
-    recs_dict = pickle.load(open("recs_file.p","rb"))
+    recs_dict = pickle.load(open("lim_recs_file.p","rb"))
 except FileNotFoundError:
-    recs_dict = pickle.load(urlopen("https://raw.githubusercontent.com/ritvikmath/nlp-recipe-project/master/recs_file.p"))
+    recs_dict = pickle.load(urlopen("https://raw.githubusercontent.com/ritvikmath/nlp-recipe-project/master/lim_recs_file.p"))
     
 id_to_info = recs_dict['id_to_info']
 id_to_recs = recs_dict['id_to_recs']
