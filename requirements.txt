@@ -32,7 +32,7 @@ googleapis-common-protos==1.51.0
 grpcio==1.28.1
 gunicorn==20.0.4
 h5py==2.10.0
-httplib2==0.17.1
+httplib2==0.18.0
 idna==2.9
 itsdangerous==1.1.0
 Jinja2==2.11.2
