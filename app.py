@@ -7,6 +7,36 @@ from urllib.request import urlopen
 
 import pickle
 from random import sample
+import requests
+
+def download_file_from_google_drive(id, destination):
+    URL = "https://docs.google.com/uc?export=download"
+
+    session = requests.Session()
+
+    response = session.get(URL, params = { 'id' : id }, stream = True)
+    token = get_confirm_token(response)
+
+    if token:
+        params = { 'id' : id, 'confirm' : token }
+        response = session.get(URL, params = params, stream = True)
+
+    save_response_content(response, destination)    
+
+def get_confirm_token(response):
+    for key, value in response.cookies.items():
+        if key.startswith('download_warning'):
+            return value
+
+    return None
+
+def save_response_content(response, destination):
+    CHUNK_SIZE = 32768
+
+    with open(destination, "wb") as f:
+        for chunk in response.iter_content(CHUNK_SIZE):
+            if chunk: # filter out keep-alive new chunks
+                f.write(chunk)
 
 
 #create initial strings              
@@ -63,7 +93,9 @@ current_input_state = {bid: {'id':'', 'title':'', 'url':'', 'style': base_style,
 try:
     recs_dict = pickle.load(open("lim_recs_file.p","rb"))
 except FileNotFoundError:
-    recs_dict = pickle.load(urlopen("https://raw.githubusercontent.com/ritvikmath/nlp-recipe-project/master/lim_recs_file.p"))
+    file_id = '1tEkba85r4N0pLsfgvWUzOtLBGy2bG_W7'
+    download_file_from_google_drive(file_id, 'gdrive_lim_recs_file.p')
+    recs_dict = pickle.load(open("gdrive_lim_recs_file.p","rb"))
     
 id_to_info = recs_dict['id_to_info']
 id_to_recs = recs_dict['id_to_recs']
