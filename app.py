@@ -3,6 +3,7 @@ import dash_core_components as dcc
 import dash_html_components as html
 from dash.dependencies import Input, Output
 import dash_bootstrap_components as dbc
+from urllib.request import urlopen
 
 import pickle
 from random import sample
@@ -24,6 +25,9 @@ doc2vec_string = 'Doc2Vec'
 lstm_string = 'LSTM'
 bert_string = 'BERT'
 
+#current mode is landing
+curr_mode = 'landing'
+
 #this global will keep track of recs
 app_recs = {'BoW': [], 'D2V': [], 'LSTM': [], 'BERT': []}
 
@@ -36,15 +40,31 @@ available_url_ids = [bid + '_url' for bid in available_button_ids]
 #the default style for a recipe card
 base_style = {"width": "90%", 'align': 'center', 'background-color': '#f0f0f0'}
 selected_style = {"width": "90%", 'align': 'center', 'background-color': '#d2f2cb'}
+
+button_rec_style = {'font-size':'18px', 'display': 'none'}
+button_input_style = {'font-size':'18px'}
+
+inputs_button_style = {'font-size': '20px'}
+inputs_button_style_hidden = {'font-size': '20px', 'display':'none'}
+
+num_recipes_style = {'textAlign': 'center', 'font-size': '25px'}
+num_recipes_style_hidden = {'textAlign': 'center', 'font-size': '25px', 'display':'none'}
+
+dropdown_style = {'font-size': '30px'}
+dropdown_style_hidden = {'font-size': '30px', 'display':'none'}
               
 #this global will keep track of which recipes are currently "liked"              
 current_liked_recipe_ids = []
 
 #this global keeps track of all the info regarding each card
-current_input_state = {bid: {'id':'', 'title':'', 'url':'', 'style': base_style, 'picked':False} for bid in available_button_ids}
+current_input_state = {bid: {'id':'', 'title':'', 'url':'', 'style': base_style, 'button_style': button_input_style, 'picked':False} for bid in available_button_ids}
 
 #read data file
-recs_dict = pickle.load(open("recs_file.p","rb"))
+try:
+    recs_dict = pickle.load(open("recs_file.p","rb"))
+except FileNotFoundError:
+    recs_dict = pickle.load(urlopen("https://raw.githubusercontent.com/ritvikmath/nlp-recipe-project/master/recs_file.p"))
+    
 id_to_info = recs_dict['id_to_info']
 id_to_recs = recs_dict['id_to_recs']
 all_recipe_ids = list(id_to_info.keys())
@@ -63,6 +83,7 @@ def refresh_cards():
         current_input_state[bid]['url'] = r_info[2]
         current_input_state[bid]['picked'] = False
         current_input_state[bid]['style'] = base_style
+        current_input_state[bid]['button_style'] = button_input_style
 
 #start off by getting 6 random recipes
 refresh_cards()
@@ -81,17 +102,34 @@ def create_recipe_card(recipe_title, recipe_url, button_id):
             [
                 html.H1(recipe_title, id=button_id + '_title', className="card-title", style={'font-size':'20px', 'textAlign': 'center'}),
                 html.Div([dbc.CardLink("Recipe Link", id=button_id + '_url', href=recipe_url, external_link=True, target="_blank", style={'font-size':'18px'})], style={'textAlign': 'center', 'padding': '1%'}),
-                html.Div([dbc.Button("I Like This!", id=button_id, color="success", style={'font-size':'20px'})], style={'textAlign': 'center', 'padding-top': '3%'})
+                html.Div([dbc.Button("I Like This!", id=button_id, color="success", style=button_input_style)], style={'textAlign': 'center', 'padding-top': '3%'})
             ]
         ),
         id = button_id + '_card',
         style={"width": "90%", 'align': 'center', 'background-color': '#f0f0f0'}
     )
 
-#set the layout             
+#create the model selection dropdown
+model_dropdown = dbc.DropdownMenu(
+    label="Model",
+    id='model',
+    bs_size="lg",
+    className="mb-3",
+    children=[
+        dbc.DropdownMenuItem("Bag of Words", id='BoW', style={'font-size': '16px'}),
+        dbc.DropdownMenuItem("Doc2Vec", id='D2V', style={'font-size': '16px'}),
+        dbc.DropdownMenuItem("LSTM", id='LSTM', style={'font-size': '16px'}),
+        dbc.DropdownMenuItem("BERT", id='BERT', style={'font-size': '16px'}),
+    ],
+    direction='down',
+    style=dropdown_style_hidden
+)
+
+#set the layout     
+        
 app.layout = dbc.Container(
     [
-        html.H1(landing_header_string, style={'textAlign': 'center', 'padding-top': '3%', 'padding-bottom': '3%', 'font-size': '40px'}),
+        html.H1(landing_header_string, id='header_string', style={'textAlign': 'center', 'padding-top': '3%', 'padding-bottom': '3%', 'font-size': '40px'}),
         
         dbc.CardDeck(
             [
@@ -110,12 +148,14 @@ app.layout = dbc.Container(
             style={'padding-bottom': '1%'}
         ),
         dbc.Row([
-            dbc.Col(html.H1(recipes_selected_string, id='num_recipes', style={'textAlign': 'center', 'font-size': '25px'}), width={'size': 4, 'offset': 4})
+                dbc.Col(html.Div([dbc.Button("Back", id="back", color="secondary", style=inputs_button_style_hidden)], style={'textAlign': 'center', 'padding-top': '5%'})),
+                dbc.Col(html.H1(recipes_selected_string, id='num_recipes', style=num_recipes_style)),
+                dbc.Col(html.Div([model_dropdown], style={'textAlign': 'center', 'padding-top': '0'}))
             ]),
         dbc.Row([
-                dbc.Col(html.Div([dbc.Button("Refresh", id="refresh", color="primary", style={'font-size': '20px'})], style={'textAlign': 'center', 'padding-top': '5%'})),
-                dbc.Col(html.Div([dbc.Button("Reset", id="reset", color="danger", style={'font-size': '20px'})], style={'textAlign': 'center', 'padding-top': '5%'})),
-                dbc.Col(html.Div([dbc.Button("Done", id="done", color="success", style={'font-size': '20px'})], style={'textAlign': 'center', 'padding-top': '5%'}))
+                dbc.Col(html.Div([dbc.Button("Refresh", id="refresh", color="primary", style=inputs_button_style)], style={'textAlign': 'center', 'padding-top': '5%'})),
+                dbc.Col(html.Div([dbc.Button("Reset", id="reset", color="danger", style=inputs_button_style)], style={'textAlign': 'center', 'padding-top': '5%'})),
+                dbc.Col(html.Div([dbc.Button("Done", id="done", color="success", style=inputs_button_style)], style={'textAlign': 'center', 'padding-top': '5%'}))
             ])
     ],
     fluid=True
@@ -135,8 +175,59 @@ def reset_cards():
         
 #this function generates recs based on current liked recipes
 def get_recs():
-    pass
-
+    global current_liked_recipe_ids
+    global app_recs
+    global current_input_state
+    global curr_mode
+    
+    #get all recs
+    for rid in current_liked_recipe_ids:
+        app_recs['BoW'].extend(id_to_recs[rid]['BoW'])
+        app_recs['D2V'].extend(id_to_recs[rid]['D2V'])
+        app_recs['LSTM'].extend(id_to_recs[rid]['LSTM'])
+        app_recs['BERT'].extend(id_to_recs[rid]['BERT'])
+    
+    #just sample six from each model
+    for model in ['BoW', 'D2V', 'LSTM', 'BERT']:
+        app_recs[model] = sample(app_recs[model], 6)
+        
+    for idx,bid in enumerate(current_input_state):
+        #all cards not chosen
+        current_input_state[bid]['picked'] = False
+        #all cards have base style
+        current_input_state[bid]['style'] = base_style
+        #all "I Like This!" buttons are hidden
+        current_input_state[bid]['button_style'] = button_rec_style
+        #the initial set of recs will be from BoW
+        info = id_to_info[app_recs['BoW'][idx]]
+        current_input_state[bid]['title'] = info[0]
+        current_input_state[bid]['url'] = info[1]
+     
+    #switch the current mode
+    curr_mode = 'recs'
+    
+def go_back():
+    global current_liked_recipe_ids
+    global app_recs
+    global current_input_state
+    global curr_mode
+    
+    refresh_cards()
+    app_recs = {'BoW': [], 'D2V': [], 'LSTM': [], 'BERT': []}
+    current_liked_recipe_ids = []
+    curr_mode = 'landing'
+    
+    
+  
+def change_model(model_name):
+    global app_recs
+    global current_input_state
+    
+    for idx,bid in enumerate(current_input_state):
+        info = id_to_info[app_recs[model_name][idx]]
+        current_input_state[bid]['title'] = info[0]
+        current_input_state[bid]['url'] = info[1]
+    
 #this function changes a chard if it has been clicked on
 def change_card(trigered_element_id):
     global current_input_state
@@ -151,14 +242,26 @@ def change_card(trigered_element_id):
 def generate_callback_output():
     global current_input_state
     global current_liked_recipe_ids
+    global curr_mode
     
+    button_styles = [current_input_state[i]['button_style'] for i in available_button_ids]
     card_styles = [current_input_state[i]['style'] for i in available_button_ids]
     titles = [current_input_state[i]['title'] for i in available_button_ids]
     urls = [current_input_state[i]['url'] for i in available_button_ids]
     
     recipes_selected_string = ['%s Recipes Selected'%len(current_liked_recipe_ids)]
     
-    output = card_styles + titles + urls + recipes_selected_string
+    recipes_selected_style = [num_recipes_style] if curr_mode == 'landing' else [num_recipes_style_hidden]
+    
+    header_string = [landing_header_string if curr_mode == 'landing' else rec_header_string]
+    
+    input_buttons_styles = [inputs_button_style]*3 if curr_mode == 'landing' else [inputs_button_style_hidden]*3
+    
+    back_button_style = [inputs_button_style_hidden] if curr_mode == 'landing' else [inputs_button_style]
+    
+    model_dropdown_style = [dropdown_style_hidden] if curr_mode == 'landing' else [dropdown_style]
+    
+    output = button_styles + card_styles + titles + urls + recipes_selected_string + recipes_selected_style + header_string + input_buttons_styles + back_button_style + model_dropdown_style
     
     return output
 
@@ -166,17 +269,25 @@ def generate_callback_output():
 #[all 'I Like This!" buttons ... rest button ... refresh button ... done button] 
         
 #this callback returns as output the following elements:
-#[all card styles ... all card titles ... all card urls ... current number of recipes selected string] 
+#[all button styles ... all card styles ... all card titles ... all card urls ... current number of recipes selected string] 
 @app.callback(
+    [dash.dependencies.Output(bid, 'style') for bid in available_button_ids] + 
     [dash.dependencies.Output(cid, 'style') for cid in available_card_ids] + 
     [dash.dependencies.Output(tid, 'children') for tid in available_title_ids] +
     [dash.dependencies.Output(uid, 'href') for uid in available_url_ids] +
-    [dash.dependencies.Output('num_recipes', 'children')],
+    [dash.dependencies.Output('num_recipes', 'children')] +
+    [dash.dependencies.Output('num_recipes', 'style')] +
+    [dash.dependencies.Output('header_string', 'children')] + 
+    [dash.dependencies.Output(inputs_button_id, 'style') for inputs_button_id in ['reset', 'refresh', 'done']] +
+    [dash.dependencies.Output('back', 'style')] +
+    [dash.dependencies.Output('model', 'style')],
      
     [dash.dependencies.Input(bid, 'n_clicks') for bid in available_button_ids] +
     [dash.dependencies.Input('reset', 'n_clicks')] + 
     [dash.dependencies.Input('refresh', 'n_clicks')] + 
-    [dash.dependencies.Input('done', 'n_clicks')])
+    [dash.dependencies.Input('done', 'n_clicks')] + 
+    [dash.dependencies.Input('back', 'n_clicks')] +
+    [dash.dependencies.Input(model_name, 'n_clicks') for model_name in ['BoW', 'D2V', 'LSTM', 'BERT']])
 def update_app_upon_liked_recipe(*n_clicks_vals):
     
     #get the current callback context    
@@ -203,6 +314,16 @@ def update_app_upon_liked_recipe(*n_clicks_vals):
     elif triggered_element_id == 'done':
         
         get_recs()
+        
+    #if this was a dropdown model selection
+    elif triggered_element_id in ['BoW', 'D2V', 'LSTM', 'BERT']:
+        
+        change_model(triggered_element_id)
+    
+    #if this was the back button
+    elif triggered_element_id == 'back':
+        
+        go_back()
         
     #otherwise this was a "I Like This!" button
     else:
