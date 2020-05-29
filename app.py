@@ -89,18 +89,18 @@ current_liked_recipe_ids = []
 #this global keeps track of all the info regarding each card
 current_input_state = {bid: {'id':'', 'title':'', 'url':'', 'style': base_style, 'button_style': button_input_style, 'picked':False} for bid in available_button_ids}
 
-print('reading files')
+#this global keeps track of the current model name
+curr_model_label = 'BoW'
+
 
 #read data file
 try:
-    recs_dict = pickle.load(open("lim_recs_file.p","rb"))
+    recs_dict = pickle.load(open("populated_recs_dict.p","rb"))
 except FileNotFoundError:
-    file_id = '1tEkba85r4N0pLsfgvWUzOtLBGy2bG_W7'
-    download_file_from_google_drive(file_id, 'gdrive_lim_recs_file.p')
-    recs_dict = pickle.load(open("gdrive_lim_recs_file.p","rb"))
-
-#recs_dict = eval('{\'id_to_info\': {\'0000973574\': (\'Zucchini Nut Bread\', \'http://www.food.com/recipe/zucchini-nut-bread-329682\'), \'0000a4bcf6\': (\'Salmon & Salad a La SPORTZ\', \'http://www.kraftrecipes.com/recipes/salmon-salad-a-la-sportz-59364.aspx\'), \'00013266c9\': ("Tinklee\'s Vanilla Crack", \'https://cookpad.com/us/recipes/345321-tinklees-vanilla-crack\'), \'0001960f61\': (\'Apple Cinnamon French Toast Strata\', \'http://www.food.com/recipe/apple-cinnamon-french-toast-strata-273939\'), \'0001bdeec0\': (\'Leek, Potato, and Bacon Casserole\', \'http://www.foodnetwork.com/recipes/food-network-kitchens/leek-potato-and-bacon-casserole-recipe.html\'), \'0001d6acb7\': (\'Soft Pretzels with Queso Poblano Sauce and Mustard Sauce\', \'http://www.foodnetwork.com/recipes/bobby-flay/soft-pretzels-with-queso-poblano-sauce-and-mustard-sauce-recipe.html\'), \'0002491373\': (\'Tex-Mex Caponata\', \'http://www.food.com/recipe/tex-mex-caponata-28602\'), \'00029f71f7\': (\'Apple Carrot Bones (dog treat)\', \'https://cookpad.com/us/recipes/369091-apple-carrot-bones-dog-treat\'), \'00042a7801\': (\'Old-Fashioned Sweet Potato Pie\', \'http://www.epicurious.com/recipes/food/views/old-fashioned-sweet-potato-pie-382217\'), \'0005a0ebbd\': (\'Almond Blondie Triangles Recipe\', \'http://cookeatshare.com/recipes/almond-blondie-triangles-63594\')}, \'id_to_recs\': {\'0000973574\': {\'BoW\': [\'00042a7801\', \'0001bdeec0\', \'0001d6acb7\', \'0000a4bcf6\', \'00029f71f7\', \'0000973574\'], \'D2V\': [\'0005a0ebbd\', \'00042a7801\', \'0001d6acb7\', \'0000973574\', \'00029f71f7\', \'0002491373\'], \'LSTM\': [\'0000a4bcf6\', \'00013266c9\', \'0005a0ebbd\', \'00029f71f7\', \'0001d6acb7\', \'00042a7801\'], \'BERT\': [\'0005a0ebbd\', \'0001bdeec0\', \'0000a4bcf6\', \'0002491373\', \'00042a7801\', \'0000973574\']}, \'0000a4bcf6\': {\'BoW\': [\'0001960f61\', \'0000973574\', \'00029f71f7\', \'0001bdeec0\', \'0000a4bcf6\', \'00013266c9\'], \'D2V\': [\'00013266c9\', \'00042a7801\', \'0001d6acb7\', \'0001960f61\', \'0005a0ebbd\', \'0000a4bcf6\'], \'LSTM\': [\'00029f71f7\', \'00042a7801\', \'0001bdeec0\', \'0000a4bcf6\', \'0000973574\', \'00013266c9\'], \'BERT\': [\'00013266c9\', \'0001bdeec0\', \'0000a4bcf6\', \'00029f71f7\', \'0001960f61\', \'0001d6acb7\']}, \'00013266c9\': {\'BoW\': [\'0000973574\', \'00042a7801\', \'00029f71f7\', \'0000a4bcf6\', \'00013266c9\', \'0005a0ebbd\'], \'D2V\': [\'0000a4bcf6\', \'00013266c9\', \'0001960f61\', \'0001bdeec0\', \'0000973574\', \'00042a7801\'], \'LSTM\': [\'00029f71f7\', \'0002491373\', \'0000a4bcf6\', \'0005a0ebbd\', \'0001bdeec0\', \'00013266c9\'], \'BERT\': [\'0000973574\', \'0001d6acb7\', \'0002491373\', \'00029f71f7\', \'00042a7801\', \'0001bdeec0\']}, \'0001960f61\': {\'BoW\': [\'0005a0ebbd\', \'00042a7801\', \'0001960f61\', \'0001d6acb7\', \'0000973574\', \'0001bdeec0\'], \'D2V\': [\'0000973574\', \'0000a4bcf6\', \'0005a0ebbd\', \'0002491373\', \'0001bdeec0\', \'0001960f61\'], \'LSTM\': [\'0001d6acb7\', \'00029f71f7\', \'0005a0ebbd\', \'0001960f61\', \'0002491373\', \'0001bdeec0\'], \'BERT\': [\'0002491373\', \'0001d6acb7\', \'0000a4bcf6\', \'0001960f61\', \'0001bdeec0\', \'0005a0ebbd\']}, \'0001bdeec0\': {\'BoW\': [\'00029f71f7\', \'0005a0ebbd\', \'00013266c9\', \'0001960f61\', \'0001d6acb7\', \'0001bdeec0\'], \'D2V\': [\'0000973574\', \'0005a0ebbd\', \'00029f71f7\', \'00042a7801\', \'0001d6acb7\', \'0001bdeec0\'], \'LSTM\': [\'0000a4bcf6\', \'0001d6acb7\', \'00029f71f7\', \'00013266c9\', \'0005a0ebbd\', \'0002491373\'], \'BERT\': [\'0001960f61\', \'0000973574\', \'0000a4bcf6\', \'00042a7801\', \'0002491373\', \'0001bdeec0\']}, \'0001d6acb7\': {\'BoW\': [\'0001bdeec0\', \'0000a4bcf6\', \'0005a0ebbd\', \'00029f71f7\', \'0000973574\', \'0001960f61\'], \'D2V\': [\'0001960f61\', \'0000a4bcf6\', \'0000973574\', \'00042a7801\', \'0005a0ebbd\', \'00013266c9\'], \'LSTM\': [\'0001d6acb7\', \'0000973574\', \'00013266c9\', \'0000a4bcf6\', \'00029f71f7\', \'0001960f61\'], \'BERT\': [\'0001960f61\', \'00029f71f7\', \'00042a7801\', \'00013266c9\', \'0001d6acb7\', \'0005a0ebbd\']}, \'0002491373\': {\'BoW\': [\'00042a7801\', \'0000a4bcf6\', \'0000973574\', \'0005a0ebbd\', \'0001bdeec0\', \'00029f71f7\'], \'D2V\': [\'0005a0ebbd\', \'00042a7801\', \'0001d6acb7\', \'00013266c9\', \'0000a4bcf6\', \'0002491373\'], \'LSTM\': [\'0001d6acb7\', \'0002491373\', \'0005a0ebbd\', \'0001960f61\', \'0000a4bcf6\', \'00013266c9\'], \'BERT\': [\'00042a7801\', \'0001d6acb7\', \'0002491373\', \'0001bdeec0\', \'0000a4bcf6\', \'00029f71f7\']}, \'00029f71f7\': {\'BoW\': [\'0001960f61\', \'0001bdeec0\', \'0000973574\', \'00029f71f7\', \'00042a7801\', \'0002491373\'], \'D2V\': [\'0005a0ebbd\', \'0000a4bcf6\', \'0002491373\', \'00042a7801\', \'00013266c9\', \'0001960f61\'], \'LSTM\': [\'0000973574\', \'00013266c9\', \'0002491373\', \'00029f71f7\', \'0001bdeec0\', \'0001960f61\'], \'BERT\': [\'00029f71f7\', \'00013266c9\', \'00042a7801\', \'0000973574\', \'0005a0ebbd\', \'0001bdeec0\']}, \'00042a7801\': {\'BoW\': [\'0001960f61\', \'0000a4bcf6\', \'0005a0ebbd\', \'00029f71f7\', \'0001d6acb7\', \'0002491373\'], \'D2V\': [\'00029f71f7\', \'0005a0ebbd\', \'0000a4bcf6\', \'00042a7801\', \'0002491373\', \'00013266c9\'], \'LSTM\': [\'0001960f61\', \'0000973574\', \'0005a0ebbd\', \'0001d6acb7\', \'0000a4bcf6\', \'00029f71f7\'], \'BERT\': [\'0002491373\', \'00042a7801\', \'00029f71f7\', \'0000973574\', \'0001bdeec0\', \'0005a0ebbd\']}, \'0005a0ebbd\': {\'BoW\': [\'0000a4bcf6\', \'0001d6acb7\', \'00029f71f7\', \'0005a0ebbd\', \'0001bdeec0\', \'0002491373\'], \'D2V\': [\'0000a4bcf6\', \'00013266c9\', \'0001bdeec0\', \'00042a7801\', \'0001960f61\', \'0001d6acb7\'], \'LSTM\': [\'0002491373\', \'00013266c9\', \'0001960f61\', \'00029f71f7\', \'0000a4bcf6\', \'0001d6acb7\'], \'BERT\': [\'00013266c9\', \'0001d6acb7\', \'0001bdeec0\', \'0002491373\', \'00029f71f7\', \'00042a7801\']}}}')
-    
+    file_id = '11FabBVXrMURck-i06S1vSXXvkMQ6UGDM'
+    download_file_from_google_drive(file_id, 'gdrive_populated_recs_dict.p')
+    recs_dict = pickle.load(open("gdrive_populated_recs_dict.p","rb"))
+ 
 id_to_info = recs_dict['id_to_info']
 id_to_recs = recs_dict['id_to_recs']
 all_recipe_ids = list(id_to_info.keys())
@@ -247,6 +247,9 @@ def go_back():
     global app_recs
     global current_input_state
     global curr_mode
+    global curr_model_label
+    
+    curr_model_label = 'BoW'
     
     refresh_cards()
     app_recs = {'BoW': [], 'D2V': [], 'LSTM': [], 'BERT': []}
@@ -258,6 +261,9 @@ def go_back():
 def change_model(model_name):
     global app_recs
     global current_input_state
+    global curr_model_label
+    
+    curr_model_label = model_name
     
     for idx,bid in enumerate(current_input_state):
         info = id_to_info[app_recs[model_name][idx]]
@@ -279,6 +285,7 @@ def generate_callback_output():
     global current_input_state
     global current_liked_recipe_ids
     global curr_mode
+    global curr_model_label
     
     button_styles = [current_input_state[i]['button_style'] for i in available_button_ids]
     card_styles = [current_input_state[i]['style'] for i in available_button_ids]
@@ -297,7 +304,9 @@ def generate_callback_output():
     
     model_dropdown_style = [dropdown_style_hidden] if curr_mode == 'landing' else [dropdown_style]
     
-    output = button_styles + card_styles + titles + urls + recipes_selected_string + recipes_selected_style + header_string + input_buttons_styles + back_button_style + model_dropdown_style
+    model_label = [curr_model_label]
+    
+    output = button_styles + card_styles + titles + urls + recipes_selected_string + recipes_selected_style + header_string + input_buttons_styles + back_button_style + model_dropdown_style + model_label
     
     return output
 
@@ -316,7 +325,8 @@ def generate_callback_output():
     [dash.dependencies.Output('header_string', 'children')] + 
     [dash.dependencies.Output(inputs_button_id, 'style') for inputs_button_id in ['reset', 'refresh', 'done']] +
     [dash.dependencies.Output('back', 'style')] +
-    [dash.dependencies.Output('model', 'style')],
+    [dash.dependencies.Output('model', 'style')] + 
+    [dash.dependencies.Output('model', 'label')],
      
     [dash.dependencies.Input(bid, 'n_clicks') for bid in available_button_ids] +
     [dash.dependencies.Input('reset', 'n_clicks')] + 
