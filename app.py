@@ -6,7 +6,7 @@ import dash_bootstrap_components as dbc
 from urllib.request import urlopen
 
 import pickle
-from random import sample
+from random import sample, shuffle
 import requests
 
 def download_file_from_google_drive(id, destination):
@@ -109,7 +109,13 @@ all_recipe_ids = list(id_to_info.keys())
 def refresh_cards():
     global current_input_state
     
-    chosen_recipe_ids = sample(all_recipe_ids, 6)
+    #chosen_recipe_ids = sample(all_recipe_ids, 6)
+    
+    ##JUST FOR THE PRESENTATION
+    recipe_ids_to_pick = ['249cd91d66', '066ceacbfa', '3fee1f277d']
+    chosen_recipe_ids = recipe_ids_to_pick + sample([rid for rid in all_recipe_ids if rid not in recipe_ids_to_pick], 3)
+    shuffle(chosen_recipe_ids)
+    
     current_recipe_info = [(rid,) + id_to_info[rid] for rid in chosen_recipe_ids]
     
     for idx, r_info in enumerate(current_recipe_info):
