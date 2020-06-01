@@ -1,11 +1,11 @@
 import dash
-import dash_core_components as dcc
+from dash_core_components import Store
 import dash_html_components as html
-from dash.dependencies import Input, Output
+from dash.dependencies import Input, Output, State
 import dash_bootstrap_components as dbc
-from urllib.request import urlopen
 
 import pickle
+import json
 from random import sample, shuffle
 import requests
 
@@ -106,29 +106,25 @@ id_to_recs = recs_dict['id_to_recs']
 all_recipe_ids = list(id_to_info.keys())
 
 #this function generates 6 random recipes and updates the global current_input_state accordingly
-def refresh_cards():
-    global current_input_state
+def refresh_cards(memory_data):
     
-    #chosen_recipe_ids = sample(all_recipe_ids, 6)
-    
-    ##JUST FOR THE PRESENTATION
-    recipe_ids_to_pick = ['249cd91d66', '066ceacbfa', '3fee1f277d']
-    chosen_recipe_ids = recipe_ids_to_pick + sample([rid for rid in all_recipe_ids if rid not in recipe_ids_to_pick], 3)
-    shuffle(chosen_recipe_ids)
+    chosen_recipe_ids = sample(all_recipe_ids, 6)
     
     current_recipe_info = [(rid,) + id_to_info[rid] for rid in chosen_recipe_ids]
     
     for idx, r_info in enumerate(current_recipe_info):
         bid = available_button_ids[idx]
-        current_input_state[bid]['id'] = r_info[0]
-        current_input_state[bid]['title'] = r_info[1]
-        current_input_state[bid]['url'] = r_info[2]
-        current_input_state[bid]['picked'] = False
-        current_input_state[bid]['style'] = base_style
-        current_input_state[bid]['button_style'] = button_input_style
+        memory_data['current_input_state'][bid]['id'] = r_info[0]
+        memory_data['current_input_state'][bid]['title'] = r_info[1]
+        memory_data['current_input_state'][bid]['url'] = r_info[2]
+        memory_data['current_input_state'][bid]['picked'] = False
+        memory_data['current_input_state'][bid]['style'] = base_style
+        memory_data['current_input_state'][bid]['button_style'] = button_input_style
+        
+    return memory_data
 
 #start off by getting 6 random recipes
-refresh_cards()
+#refresh_cards()
 
 # initiate app
 external_stylesheets = ['https://codepen.io/chriddyp/pen/bWLwgP.css', dbc.themes.BOOTSTRAP]
@@ -171,6 +167,7 @@ model_dropdown = dbc.DropdownMenu(
         
 app.layout = dbc.Container(
     [
+        Store(id='memory'),
         html.H1(landing_header_string, id='header_string', style={'textAlign': 'center', 'padding-top': '3%', 'padding-bottom': '3%', 'font-size': '40px'}),
         
         dbc.CardDeck(
@@ -204,115 +201,103 @@ app.layout = dbc.Container(
 )
     
 #change global vars if reset    
-def reset_cards():
-    #use globals
-    global current_input_state
-    global current_liked_recipe_ids
-    
-    current_liked_recipe_ids = []
+def reset_cards(memory_data):
+    memory_data['current_liked_recipe_ids'] = []
     
     for bid in current_input_state:
-        current_input_state[bid]['picked'] = False
-        current_input_state[bid]['style'] = base_style
+        memory_data['current_input_state'][bid]['picked'] = False
+        memory_data['current_input_state'][bid]['style'] = base_style
+        
+    return memory_data
         
 #this function generates recs based on current liked recipes
-def get_recs():
-    global current_liked_recipe_ids
-    global app_recs
-    global current_input_state
-    global curr_mode
+def get_recs(memory_data):
     
     #get all recs
-    for rid in current_liked_recipe_ids:
-        app_recs['BoW'].extend(id_to_recs[rid]['BoW'])
-        app_recs['D2V'].extend(id_to_recs[rid]['D2V'])
-        app_recs['LSTM'].extend(id_to_recs[rid]['LSTM'])
-        app_recs['BERT'].extend(id_to_recs[rid]['BERT'])
+    for rid in memory_data['current_liked_recipe_ids']:
+        memory_data['app_recs']['BoW'].extend(id_to_recs[rid]['BoW'])
+        memory_data['app_recs']['D2V'].extend(id_to_recs[rid]['D2V'])
+        memory_data['app_recs']['LSTM'].extend(id_to_recs[rid]['LSTM'])
+        memory_data['app_recs']['BERT'].extend(id_to_recs[rid]['BERT'])
     
     #just sample six from each model
     for model in ['BoW', 'D2V', 'LSTM', 'BERT']:
-        app_recs[model] = sample(app_recs[model], 6)
+        memory_data['app_recs'][model] = sample(memory_data['app_recs'][model], 6)
         
-    for idx,bid in enumerate(current_input_state):
+    for idx,bid in enumerate(memory_data['current_input_state']):
         #all cards not chosen
-        current_input_state[bid]['picked'] = False
+        memory_data['current_input_state'][bid]['picked'] = False
         #all cards have base style
-        current_input_state[bid]['style'] = base_style
+        memory_data['current_input_state'][bid]['style'] = base_style
         #all "I Like This!" buttons are hidden
-        current_input_state[bid]['button_style'] = button_rec_style
+        memory_data['current_input_state'][bid]['button_style'] = button_rec_style
         #the initial set of recs will be from BoW
-        info = id_to_info[app_recs['BoW'][idx]]
-        current_input_state[bid]['title'] = info[0]
-        current_input_state[bid]['url'] = info[1]
+        info = id_to_info[memory_data['app_recs']['BoW'][idx]]
+        memory_data['current_input_state'][bid]['title'] = info[0]
+        memory_data['current_input_state'][bid]['url'] = info[1]
      
     #switch the current mode
-    curr_mode = 'recs'
+    memory_data['curr_mode'] = 'recs'
     
-def go_back():
-    global current_liked_recipe_ids
-    global app_recs
-    global current_input_state
-    global curr_mode
-    global curr_model_label
+    return memory_data
     
-    curr_model_label = 'BoW'
+def go_back(memory_data):
     
-    refresh_cards()
-    app_recs = {'BoW': [], 'D2V': [], 'LSTM': [], 'BERT': []}
-    current_liked_recipe_ids = []
-    curr_mode = 'landing'
+    memory_data['curr_model_label'] = 'BoW'
     
+    refresh_cards(memory_data)
+    memory_data['app_recs'] = {'BoW': [], 'D2V': [], 'LSTM': [], 'BERT': []}
+    memory_data['current_liked_recipe_ids'] = []
+    memory_data['curr_mode'] = 'landing'
     
+    return memory_data
   
-def change_model(model_name):
-    global app_recs
-    global current_input_state
-    global curr_model_label
+def change_model(memory_data, model_name):
     
-    curr_model_label = model_name
+    memory_data['curr_model_label'] = model_name
     
-    for idx,bid in enumerate(current_input_state):
-        info = id_to_info[app_recs[model_name][idx]]
-        current_input_state[bid]['title'] = info[0]
-        current_input_state[bid]['url'] = info[1]
+    for idx,bid in enumerate(memory_data['current_input_state']):
+        info = id_to_info[memory_data['app_recs'][model_name][idx]]
+        memory_data['current_input_state'][bid]['title'] = info[0]
+        memory_data['current_input_state'][bid]['url'] = info[1]
+        
+    return memory_data
     
 #this function changes a chard if it has been clicked on
-def change_card(trigered_element_id):
-    global current_input_state
-    global current_liked_recipe_ids
+def change_card(memory_data, trigered_element_id):
     
-    if not current_input_state[trigered_element_id]['picked']:
-        current_input_state[trigered_element_id]['style'] = selected_style
-        current_liked_recipe_ids.append(current_input_state[trigered_element_id]['id'])
-        current_input_state[trigered_element_id]['picked'] = True
+    if not memory_data['current_input_state'][trigered_element_id]['picked']:
+        memory_data['current_input_state'][trigered_element_id]['style'] = selected_style
+        memory_data['current_liked_recipe_ids'].append(memory_data['current_input_state'][trigered_element_id]['id'])
+        memory_data['current_input_state'][trigered_element_id]['picked'] = True
+        
+    return memory_data
 
 #this function gets the current state of all global info vars and makes a formatted callback output list        
-def generate_callback_output():
-    global current_input_state
-    global current_liked_recipe_ids
-    global curr_mode
-    global curr_model_label
+def generate_callback_output(memory_data):
     
-    button_styles = [current_input_state[i]['button_style'] for i in available_button_ids]
-    card_styles = [current_input_state[i]['style'] for i in available_button_ids]
-    titles = [current_input_state[i]['title'] for i in available_button_ids]
-    urls = [current_input_state[i]['url'] for i in available_button_ids]
+    button_styles = [memory_data['current_input_state'][i]['button_style'] for i in available_button_ids]
+    card_styles = [memory_data['current_input_state'][i]['style'] for i in available_button_ids]
+    titles = [memory_data['current_input_state'][i]['title'] for i in available_button_ids]
+    urls = [memory_data['current_input_state'][i]['url'] for i in available_button_ids]
     
-    recipes_selected_string = ['%s Recipes Selected'%len(current_liked_recipe_ids)]
+    recipes_selected_string = ['%s Recipes Selected'%len(memory_data['current_liked_recipe_ids'])]
     
-    recipes_selected_style = [num_recipes_style] if curr_mode == 'landing' else [num_recipes_style_hidden]
+    recipes_selected_style = [num_recipes_style] if memory_data['curr_mode'] == 'landing' else [num_recipes_style_hidden]
     
-    header_string = [landing_header_string if curr_mode == 'landing' else rec_header_string]
+    header_string = [landing_header_string if memory_data['curr_mode'] == 'landing' else rec_header_string]
     
-    input_buttons_styles = [inputs_button_style]*3 if curr_mode == 'landing' else [inputs_button_style_hidden]*3
+    input_buttons_styles = [inputs_button_style]*3 if memory_data['curr_mode'] == 'landing' else [inputs_button_style_hidden]*3
     
-    back_button_style = [inputs_button_style_hidden] if curr_mode == 'landing' else [inputs_button_style]
+    back_button_style = [inputs_button_style_hidden] if memory_data['curr_mode'] == 'landing' else [inputs_button_style]
     
-    model_dropdown_style = [dropdown_style_hidden] if curr_mode == 'landing' else [dropdown_style]
+    model_dropdown_style = [dropdown_style_hidden] if memory_data['curr_mode'] == 'landing' else [dropdown_style]
     
-    model_label = [curr_model_label]
+    model_label = [memory_data['curr_model_label']]
     
-    output = button_styles + card_styles + titles + urls + recipes_selected_string + recipes_selected_style + header_string + input_buttons_styles + back_button_style + model_dropdown_style + model_label
+    memory_data_list = [json.dumps({'curr_mode': memory_data['curr_mode'], 'app_recs': memory_data['app_recs'], 'current_liked_recipe_ids': memory_data['current_liked_recipe_ids'], 'current_input_state': memory_data['current_input_state'], 'curr_model_label': memory_data['curr_model_label']})]
+    
+    output = button_styles + card_styles + titles + urls + recipes_selected_string + recipes_selected_style + header_string + input_buttons_styles + back_button_style + model_dropdown_style + model_label + memory_data_list
     
     return output
 
@@ -322,67 +307,79 @@ def generate_callback_output():
 #this callback returns as output the following elements:
 #[all button styles ... all card styles ... all card titles ... all card urls ... current number of recipes selected string] 
 @app.callback(
-    [dash.dependencies.Output(bid, 'style') for bid in available_button_ids] + 
-    [dash.dependencies.Output(cid, 'style') for cid in available_card_ids] + 
-    [dash.dependencies.Output(tid, 'children') for tid in available_title_ids] +
-    [dash.dependencies.Output(uid, 'href') for uid in available_url_ids] +
-    [dash.dependencies.Output('num_recipes', 'children')] +
-    [dash.dependencies.Output('num_recipes', 'style')] +
-    [dash.dependencies.Output('header_string', 'children')] + 
-    [dash.dependencies.Output(inputs_button_id, 'style') for inputs_button_id in ['reset', 'refresh', 'done']] +
-    [dash.dependencies.Output('back', 'style')] +
-    [dash.dependencies.Output('model', 'style')] + 
-    [dash.dependencies.Output('model', 'label')],
+    [Output(bid, 'style') for bid in available_button_ids] + 
+    [Output(cid, 'style') for cid in available_card_ids] + 
+    [Output(tid, 'children') for tid in available_title_ids] +
+    [Output(uid, 'href') for uid in available_url_ids] +
+    [Output('num_recipes', 'children')] +
+    [Output('num_recipes', 'style')] +
+    [Output('header_string', 'children')] + 
+    [Output(inputs_button_id, 'style') for inputs_button_id in ['reset', 'refresh', 'done']] +
+    [Output('back', 'style')] +
+    [Output('model', 'style')] + 
+    [Output('model', 'label')] +
+    [Output('memory', 'data')],
      
-    [dash.dependencies.Input(bid, 'n_clicks') for bid in available_button_ids] +
-    [dash.dependencies.Input('reset', 'n_clicks')] + 
-    [dash.dependencies.Input('refresh', 'n_clicks')] + 
-    [dash.dependencies.Input('done', 'n_clicks')] + 
-    [dash.dependencies.Input('back', 'n_clicks')] +
-    [dash.dependencies.Input(model_name, 'n_clicks') for model_name in ['BoW', 'D2V', 'LSTM', 'BERT']])
-def update_app_upon_liked_recipe(*n_clicks_vals):
+    [Input(bid, 'n_clicks') for bid in available_button_ids] +
+    [Input('reset', 'n_clicks')] + 
+    [Input('refresh', 'n_clicks')] + 
+    [Input('done', 'n_clicks')] + 
+    [Input('back', 'n_clicks')] +
+    [Input(model_name, 'n_clicks') for model_name in ['BoW', 'D2V', 'LSTM', 'BERT']], 
+    
+    [State('memory', 'data')])
+def update_app_upon_liked_recipe(*vals):
+    
+    #get the current session data
+    memory_json = vals[-1]
+    if memory_json != None:
+        memory_data = json.loads(memory_json)
+    else:
+        memory_data = {'curr_mode': curr_mode, 'app_recs': app_recs, 'current_liked_recipe_ids': current_liked_recipe_ids, 'current_input_state': current_input_state, 'curr_model_label': curr_model_label}
     
     #get the current callback context    
     ctx = dash.callback_context
 
     #if nothing changed, just return
     if not ctx.triggered:
-        return
-
-    #get the element id who triggered this update
-    triggered_element_id = ctx.triggered[0]['prop_id'].split('.')[0]
-    
-    #if this was the refresh
-    if triggered_element_id == 'refresh':
+        memory_data = refresh_cards(memory_data)
         
-        refresh_cards()
-            
-    #if this was the reset
-    elif triggered_element_id == 'reset':
-        
-        reset_cards()
-     
-    #if this was the done
-    elif triggered_element_id == 'done':
-        
-        get_recs()
-        
-    #if this was a dropdown model selection
-    elif triggered_element_id in ['BoW', 'D2V', 'LSTM', 'BERT']:
-        
-        change_model(triggered_element_id)
-    
-    #if this was the back button
-    elif triggered_element_id == 'back':
-        
-        go_back()
-        
-    #otherwise this was a "I Like This!" button
     else:
         
-        change_card(triggered_element_id)
+        #get the element id who triggered this update
+        triggered_element_id = ctx.triggered[0]['prop_id'].split('.')[0]
         
-    output = generate_callback_output()
+        #if this was the refresh
+        if triggered_element_id == 'refresh':
+            
+            memory_data = refresh_cards(memory_data)
+                
+        #if this was the reset
+        elif triggered_element_id == 'reset':
+            
+            memory_data = reset_cards(memory_data)
+         
+        #if this was the done
+        elif triggered_element_id == 'done':
+            
+            memory_data = get_recs(memory_data)
+            
+        #if this was a dropdown model selection
+        elif triggered_element_id in ['BoW', 'D2V', 'LSTM', 'BERT']:
+            
+            memory_data = change_model(memory_data, triggered_element_id)
+        
+        #if this was the back button
+        elif triggered_element_id == 'back':
+            
+            memory_data = go_back(memory_data)
+            
+        #otherwise this was a "I Like This!" button
+        else:
+            
+            memory_data = change_card(memory_data, triggered_element_id)
+        
+    output = generate_callback_output(memory_data)
     
     return output
 
