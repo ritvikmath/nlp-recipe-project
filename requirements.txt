@@ -20,6 +20,6 @@ plotly==4.8.0
 requests==2.23.0
 retrying==1.3.3
 six==1.15.0
-urllib3==1.25.9
+urllib3==1.26.5
 Werkzeug==1.0.1
 wincertstore==0.2
